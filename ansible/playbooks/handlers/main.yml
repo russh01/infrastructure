@@ -1,5 +1,5 @@
 ---
-- name: restart_ssh
+- name: restart_sshd
   service:
     name: sshd
     state: restarted
@@ -17,7 +17,8 @@
 - name: regenerate_auditd_rules
   command: /sbin/augenrules
 
-- name: restart_auditd
-  service:
-    name: auditd
+- name: reload_chrony
+  systemd:
+    name: "{{ chrony_service_name }}"
     state: restarted
+  listen: "chrony service restart"

@@ -7,27 +7,27 @@
         sysctl_config: '{{ sysctl_config | combine(sysctl_overwrite) }}'
       when: sysctl_overwrite | default()
 
-    - name: sysctl
+    - name: Kernel parameters
       sysctl:
-        name: '{{ item.key }}'
-        value: '{{ item.value }}'
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
         state: present
         ignoreerrors: true
         sysctl_set: true
         sysctl_file: /etc/sysctl.d/99-ansible.conf
-      with_dict: '{{ sysctl_config }}'
+      with_dict: "{{ sysctl_config }}"
       tags:
         - harden
         - kernel
 
-    - name: security limits
-      copy:
+    - name: Security limits
+      pam_limits:
         dest: "/etc/security/limits.d/cis.conf"
-        owner: root
-        group: root
-        mode: '0644'
-        content: |
-          * hard core 0
+        domain: "{{ item.domain }}"
+        limit_type: "{{ item.limit_type }}"
+        limit_item: "{{ item.limit_item }}"
+        value: "{{ item.value }}"
+      with_items: "{{ limits }}"
       tags:
         - harden
 
@@ -103,6 +103,7 @@
       tags:
         - harden
 
+    # TODO: Use pamd module to establish password policy
     - name: pwquality - minlen
       lineinfile:
         line: "minlen = 14"
@@ -150,44 +151,12 @@
   tags:
     - harden
 
-- name: Auditd
-  block:
-    - name: Ensure auditd is installed
-      package:
-        name: audit
-        state: present
-      tags:
-        - harden
-
-    - name: Ensure auditd buffer is OK
-      replace:
-        path: /etc/audit/rules.d/audit.rules
-        regexp: '-b \d+'
-        replace: '-b {{ audit_buffer }}'
-      notify:
-        - regenerate_auditd_rules
-      tags:
-        - harden
-
-    - name: Ensure collection audit rules are available
-      template:
-        src: "etc/audit/rules.d/collection.rules.j2"
-        dest: "/etc/audit/rules.d/collection.rules"
-        owner: root
-        group: root
-        backup: true
-      notify:
-        - regenerate_auditd_rules
-        - restart_auditd
-      tags:
-        - harden
-
 - name: Disable Services
   service:
     name: "{{ item }}"
     enabled: false
     state: stopped
-  with_items: "{{ disable_svc }}"
+  loop: "{{ disable_svc }}"
   register: service_check
   failed_when: service_check is failed and not 'Could not find the requested service' in service_check.msg
   tags:
@@ -206,13 +175,12 @@
         - efi
 
     - name: disable unused filesystems
-      lineinfile:
+      template:
+        src: "etc/modprobe.d/cis.conf.j2"
         dest: "/etc/modprobe.d/cis.conf"
-        owner: root
-        group: root
+        owner: 'root'
+        group: 'root'
         mode: '0644'
-        line: "install {{ item }} /bin/true"
-      with_items: "{{ modprobe_unused_filesystems }}"
       tags:
         - harden
 
@@ -222,20 +190,23 @@
     state: present
     regexp: ^umask
     line: "umask 027"
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_distribution_major_version == '7'
   tags:
     - harden
 
-- name: cis sudoers configuration
+- name: CIS sudoers configuration
   copy:
-    dest: /etc/sudoers.d/cis
+    src: "etc/sudoers.d/cis"
+    dest: "/etc/sudoers.d/cis"
     owner: root
     group: root
     mode: '0440'
-    content: |
-      Defaults use_pty
-      Defaults logfile="/var/log/sudo.log"
-    tags:
-      - harden
+  tags:
+    - harden
 
 - name: Remove packages not allowed by CIS
   package:
@@ -243,77 +214,3 @@
     state: absent
   tags:
     - harden
-
-- name: grub and kernel
-  block:
-    - name: Reset grub link if we are EFI
-      set_fact:
-        grub_config_path_link: "{{ grub_config_path_efi }}"
-      when: efi_installed.stat.isdir is defined and efi_installed.stat.isdir and grub_config_path_efi is defined
-      tags:
-        - efi
-
-    - name: grub.d directory
-      file:
-        name: /etc/default/grub.d
-        owner: root
-        group: root
-        mode: '0755'
-        state: directory
-        recurse: true
-      tags:
-        - grub
-        - kernel
-        - harden
-
-    - name: Append /etc/default/grub file
-      lineinfile:
-        path: /etc/default/grub
-        line: for x in $(ls /etc/default/grub.d) ; do source /etc/default/grub.d/$x ; done
-        state: present
-      tags:
-        - grub
-        - kernel
-        - harden
-
-    - name: Append /etc/default/grub file
-      lineinfile:
-        path: /etc/default/grub
-        line: for x in $(ls /etc/default/grub.d) ; do source /etc/default/grub.d/$x ; done
-        state: present
-      tags:
-        - grub
-        - kernel
-        - harden
-
-    - name: Grub command line defaults
-      copy:
-        dest: "/etc/default/grub.d/99-rocky.cfg"
-        owner: root
-        group: root
-        mode: '0644'
-        content: 'GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT {{ kernel_boot_options }}"'
-      tags:
-        - grub
-        - kernel
-        - harden
-
-    - name: Grub command line defaults
-      template:
-        src: etc/default/grub.d/99-aoc.cfg.j2
-        dest: /etc/default/grub.d/99-aoc.cfg
-        owner: root
-        group: root
-        mode: '0644'
-        backup: true
-      tags:
-        - grub
-        - kernel
-        - harden
-
-    - name: rebuild grub
-      command: /usr/sbin/grub2-mkconfig -o {{ grub_config_path_link }}
-      tags:
-        - grub
-        - kernel
-        - harden

@@ -3,7 +3,7 @@
 # Created: @SherifNagy
 # Modified to current standards: @nazunalika
 - name: Configure KVM host
-  hosts: kvmhosts
+  hosts: kvm
   become: true
 
   pre_tasks:
@@ -20,21 +20,21 @@
 
   tasks:
     - name: Check for CPU Virtualization
-      shell: "lscpu | grep -i virtualization"
+      shell: "set -o pipefail; lscpu | grep -i virtualization"
       register: result
+      changed_when: false
       failed_when: "result.rc != 0"
 
     # Install KVM packages
     - name: Installing KVM Packages
       package:
-        name: "{{ item }}"
+        name:
+          - qemu-kvm
+          - libvirt
+          - libvirt-python
+          - libguestfs-tools
+          - virt-install
         state: present
-      with_items:
-        - qemu-kvm
-        - libvirt
-        - libvirt-python
-        - libguestfs-tools
-        - virt-install
 
     - name: Enable and Start libvirtd
       systemd:
@@ -43,8 +43,9 @@
         enabled: true
 
     - name: Verify KVM module is loaded
-      shell: "lsmod | grep -i kvm"
+      shell: "set -o pipefail; lsmod | grep -i kvm"
       register: result
+      changed_when: false
       failed_when: "result.rc != 0"
 
   post_tasks:

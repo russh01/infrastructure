@@ -1,0 +1,68 @@
+---
+# Configures PAM and SSSD post-ipa client installation. It is recommended that
+# that we use a custom authselect profile and build it out from there.
+- name: Enterprise Linux 7 PAM Configuration
+  copy:
+    src: "etc/pam.d/{{ ansible_distribution }}-{{ ansible_distribution_major_version }}-system-auth-ac"
+    dest: "{{ item }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - /etc/pam.d/system-auth-ac
+    - /etc/pam.d/password-auth-ac
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['distribution_major_version'] == '7'
+
+- name: Enterprise Linux 8 PAM Configuration
+  block:
+    - name: Ensure Custom Profile is removed
+      file:
+        path: /etc/authselect/custom/sssd-rocky
+        state: absent
+
+    - name: Create custom authselect profile based on sssd
+      command: >
+        /usr/bin/authselect create-profile sssd-rocky
+        --base-on sssd
+        --symlink-dconf
+        --symlink-meta
+        --symlink=postlogin
+        --symlink=smartcard-auth
+        --symlink=fingerprint-auth
+      changed_when: false
+
+    - name: Override system-auth and password-auth
+      copy:
+        src: "etc/authselect/custom/sssd-aoc/{{ ansible_distribution }}-{{ ansible_distribution_major_version }}-system-auth"
+        dest: "{{ item }}"
+        owner: root
+        group: root
+        mode: '0644'
+      loop:
+        - /etc/authselect/custom/sssd-aoc/system-auth
+        - /etc/authselect/custom/sssd-aoc/password-auth
+
+    - name: Select New Profile
+      command: >
+        /usr/bin/authselect select custom/sssd-aoc
+        without-nullok
+        with-faillock
+        with-mkhomedir
+        with-sudo
+        --force
+      changed_when: false
+
+    - name: Apply new settings
+      command: /usr/bin/authselect apply-changes
+      changed_when: false
+
+    - name: Enable oddjobd
+      service:
+        name: oddjobd
+        state: started
+        enabled: true
+  when:
+    - ansible_facts['os_family'] == 'RedHat'
+    - ansible_facts['distribution_major_version'] == '8'

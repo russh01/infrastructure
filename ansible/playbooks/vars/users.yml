@@ -5,12 +5,61 @@ users:
     last: Abel
     email: label@rockylinux.org
     password: ThisIsNotMyPassword1!
-    title: Infrastructure IdM Engineer
+    title: Infrastructure IdM Manager
     loginshell: /bin/bash
-  - name: label2
-    first: Louis
-    last: Abel
-    email: label@rockylinux.org
+  - name: gmk
+    first: Gregory
+    last: Kurtzer
+    email: gmk@rockylinux.org
     password: ThisIsNotMyPassword1!
-    title: Infrastructure IdM Engineer - Admin
+    title: Executive Director
+    loginshell: /bin/bash
+  - name: brian
+    first: Brian
+    last: Clemens
+    email: brian@rockylinux.org
+    password: ThisIsNotMyPassword1!
+    title: Project Manager
+    loginshell: /bin/bash
+  - name: hbjy
+    first: Hayden
+    last: Young
+    email: hbjy@rockylinux.org
+    password: ThisIsNotMyPassword1!
+    title: Web & Branding Manager
+    loginshell: /bin/bash
+  - name: jorp
+    first: Jordan
+    last: Pisaniello
+    email: jorp@rockylinux.org
+    password: ThisIsNotMyPassword1!
+    title: Community Manager
+    loginshell: /bin/bash
+  - name: neil
+    first: Neil
+    last: Hanlon
+    email: neil@rockylinux.org
+    password: ThisIsNotMyPassword1!
+    title: Infrastructure Manager
+    loginshell: /bin/bash
+  - name: rlh
+    first: R. Leigh
+    last: Hennig
+    email: rlh@rockylinux.org
+    password: ThisIsNotMyPassword1!
+    title: Operations Manager
+    loginshell: /bin/bash
+  - name: rfelsburg
+    first: Rob
+    last: Felsburg
+    email: rfelsburg@rockylinux.org
+    password: ThisIsNotMyPassword1!
+    title: Operations Manager
+    loginshell: /bin/bash
+  - name: tg
+    first: Taylor
+    last: Goodwill
+    email: tg@rockylinux.org
+    password: ThisIsNotMyPassword1!
+    title: Infrastructure Manager
     loginshell: /bin/bash
